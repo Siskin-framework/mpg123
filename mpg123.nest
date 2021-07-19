@@ -1,0 +1,173 @@
+;-    .-.                                                                       
+;-   /'v'\   SISKIN-Builder project file                                        
+;-  (/uOu\)  https://github.com/Siskin-framework/Builder/                       
+;-===="="=======================================================================
+; tested only on Windows so far and only with generic optimization
+
+compiler: gcc
+optimize: 2
+strip:    on
+output: %../build/
+temp:   %../tmp/
+
+include: %src/
+include: %src/libmpg123/
+
+defines: OPT_GENERIC
+defines: REAL_IS_FLOAT
+defines: NO_LFS_ALIAS
+
+#if Windows? [
+	define:  WIN32
+	define:  _CRT_SECURE_NO_WARNINGS
+	upx:     on
+	library: %Shlwapi
+	defines: [UNICODE _UNICODE]
+]
+
+compatibility: [
+	include: %src/compat/
+	files: [
+		%src/compat/compat.c
+		%src/compat/compat_dl.c
+		%src/compat/compat_str.c
+	]
+]
+lib-mpg123-common: [
+	files: [
+    	%src/libmpg123/parse.c
+    	%src/libmpg123/frame.c
+    	%src/libmpg123/format.c
+    	%src/libmpg123/dct64.c
+    	%src/libmpg123/equalizer.c
+    	%src/libmpg123/id3.c
+    	%src/libmpg123/optimize.c
+    	%src/libmpg123/readers.c
+    	%src/libmpg123/tabinit.c
+    	%src/libmpg123/libmpg123.c
+    	%src/libmpg123/index.c
+    	%src/libmpg123/layer3.c
+    	;opt NO_ICY
+    	%src/libmpg123/icy.c
+    	%src/libmpg123/icy2utf8.c
+    	;opt NO_LAYER
+    	%src/libmpg123/layer1.c
+    	;opt NO_LAYER2
+    	%src/libmpg123/layer2.c
+    	;opt NO_LFS_ALIAS
+    	;%src/libmpg123/lfs_alias.c
+    	;opt NO_NTOM
+    	%src/libmpg123/ntom.c
+    	;opt NO_8BIT
+    	%src/libmpg123/synth_8bit.c
+    	;opt NO_16BIT
+    	%src/libmpg123/synth.c
+    	;opt NO_32BIT when HAVE_FPU
+    	%src/libmpg123/synth_s32.c
+    	;opt NO_REAL when HAVE_FPU
+    	%src/libmpg123/synth_real.c
+    	;opt NO_STRING
+    	%src/libmpg123/stringbuf.c
+    	;opt NO_FEATURE_REPORT
+    	%src/libmpg123/feature.c
+    	;when LFS_SENSITIVE (large file support)
+    	;%src/libmpg123/lfs_wrap.c
+	]
+]
+
+lib-mpg123-amd64: [
+	;@@ TODO
+]
+
+lib-syn123: [
+	include: %src/libsyn123/
+	files: [
+		%src/libsyn123/filter.c
+		%src/libsyn123/geiger.c
+		%src/libsyn123/libsyn123.c
+		%src/libsyn123/pinknoise.c
+		%src/libsyn123/resample.c
+		%src/libsyn123/sampleconv.c
+		%src/libsyn123/volume.c
+	]
+]
+
+arch-x64: [
+	arch: x64
+	define: _FILE_OFFSET_BITS=64
+	include: %generated/x64/
+	#if Linux? [
+		library: %dl
+		defines: TO_LINUX_X64
+		defines: __LP64__ ; has long (integer) 64 bits
+	]
+	#if Windows? [
+		defines: TO_WIN32_X64
+		defines: _WIN32
+		defines: __LLP64__ ; 64-bit, long (integer) has 32 bits and 'void *' is sizeof(long long)
+	]
+	#if macOS? [
+		defines: TO_OSX_X64
+		defines: __LP64__ ; same like LLP64, but long (integer) has 64 bits instead of 32
+	]
+	:compatibility
+]
+
+eggs: [
+	"mpg123 library amd64" [
+		name:    %libmpg123
+		flags:   [shared]
+		defines: DYNAMIC_BUILD
+		strip:   off
+		:arch-x64
+		:lib-mpg123-common
+	]
+	"syn123 library amd64" [
+		name:    %libsyn123
+		flags:   [shared]
+		defines: DYNAMIC_BUILD
+		strip:   off
+		:arch-x64
+		:lib-syn123
+	]
+
+	"Example: scan" [
+		:arch-x64
+		name:   %test_mpg123_scan
+		file:   %doc/examples/scan.c
+		;library: [%../build/ %libmpg123] ;static
+		shared: %libmpg123                ;dynamic
+	]
+	"Example: extract_frames" [
+		:arch-x64
+		name:   %test_mpg123_extract_frames
+		file:   %doc/examples/extract_frames.c
+		shared: %libmpg123
+	]
+
+	"Test: decode_fixed" [
+		:arch-x64
+		name:   %test_mpg123_decode_fixed
+		file:   %src/tests/decode_fixed.c
+		shared: %libmpg123
+	]
+	"Test: seek_whence" [
+		:arch-x64
+		name:   %test_mpg123_seek_whence
+		file:   %src/tests/seek_whence.c
+		shared: %libmpg123
+	]
+	"Test: volume" [
+		:arch-x64
+		name:    %test_syn123_volume
+		include: %src/libsyn123/
+		file:    %src/tests/volume.c
+		shared:  %libsyn123
+	]
+	"Test: noise" [
+		:arch-x64
+		name:   %test_syn123_noise
+		file:   %src/tests/noise.c
+		shared: %libsyn123
+	]
+]

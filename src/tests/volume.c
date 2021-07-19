@@ -1,7 +1,9 @@
+#include "compat.h"
 #include "syn123.h"
 #include <math.h>
 #include <stdio.h>
-#include <stdint.h>
+
+
 
 #define AMPTEST(name, bits, wbits, enc) \
 int name(syn123_handle *sh) \
